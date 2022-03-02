@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html ng-app="App" ng-controller="Ctrl">
+<head>
+	<title>Cardify</title>
+	<meta charset="utf-8">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-aria.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-messages.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-sanitize.min.js"></script>
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-material-icons/0.7.1/angular-material-icons.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.8.6/xlsx.full.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.54/pdfmake.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/mousetrap/1.6.3/mousetrap.min.js"></script>
+	<style>
+		@media print {
+			.noprint {
+				display: none;
+			}
+			div.page {
+				page-break-after: always;
+				page-break-inside: avoid;
+				-webkit-region-break-inside: avoid;
+			}
+		}
+	</style>
+	
+	<script>
+		window.onload = function() {
+			document.getElementById('file-object').addEventListener("change", OnUpload);
+			Mousetrap.bind('h', function() { mainscope.hide = !mainscope.hide; mainscope.$apply(); });
+		};
+		
+		function OnUpload(e) {
+			console.log("Upload");
+			let files = e.target.files, file, fileReader = new FileReader();
+			if (!files || files.length == 0) return;
+			file = files[0];
+			fileReader.onload = function (e) {
+				let filename = file.name, binary = "", bytes = new Uint8Array(e.target.result);
+				let length = bytes.byteLength;
+				for (let i = 0; i < length; i++) binary += String.fromCharCode(bytes[i]);
+				let oFile = XLSX.read(binary, {type: 'binary', cellDates:true, cellStyles:true});
+				console.log(oFile);
+				mainscope.Load(oFile);
+			};
+			fileReader.readAsArrayBuffer(file);
+			e.preventDefault();
+		}
+		
+		let mainscope, app = angular.module('App', ['ngMaterial', 'ngMessages', 'ngSanitize'])
+			.controller('Ctrl', function ($scope, $window, $interval, $timeout, $sanitize, $mdDialog){
+				mainscope = $scope;
+				$scope.file;
+				$scope.sheet = null;
+				$scope.worksheets = [];
+				$scope.str = "";
+				$scope.hide = false;
+				$scope.format = false;
+				$scope.args = false;
+				$scope.data = false;
+				$scope.cols = false;
+				$scope.doc = [];
+				$scope.elements = [];
+				$scope.count = false;
+				
+				$scope.Load = function(file){
+					let id = 0;
+					$scope.file = file;
+					$scope.worksheets = file.SheetNames.map(x=>{return{id:id++, name:x}});
+					$scope.$apply();
+				};
+				
+				$scope.Go = function() {
+					try {
+						$scope.format = JSON.parse($scope.str);
+					} catch(e) {
+						console.log(e);
+						return;
+					}
+					
+					$scope.args = $scope.format[$scope.sheet.name]
+					$scope.data = XLSX.utils.sheet_to_json($scope.file.Sheets[$scope.sheet.name]);
+					$scope.cols = $scope.args.column_names;
+					$scope.doc = [[[]]];
+					
+					let height = Math.floor($scope.args.page_height / ($scope.args.card_height + $scope.args.spacing)) - 1, h=0, i=0;
+					let width = Math.floor($scope.args.page_width / ($scope.args.card_width + $scope.args.spacing)) - 1, w=0, p=0;
+					console.log({height:height, width:width});
+					
+					for (let c of $scope.args.column_names) {
+						let col = $scope.args.columns[c];
+						if (col.type == 'count') $scope.count = c;
+						else if (col.style) $scope.elements.push(c);
+					}
+					//coltype html coltype grid3
+					for (let row of $scope.data) {
+						if ($scope.count && $scope.data[$scope.count] < 1) continue;
+						let i = 0;
+						do {
+							$scope.doc[p][h][w++] = {data:row, num:i++};
+							if (w > width) {
+								w = 0;
+								h++;
+								$scope.doc[p].push([]);
+							}
+							if (h > height) {
+								h = 0;
+								p++;
+								$scope.doc.push([[]]);
+							}
+						} while (i++ < $scope.count);
+					}
+					console.log($scope.doc);
+				}
+			});
+	</script>
+</head>
+<body ng-cloak layout="column" layout-padding style="position:relative;">
+	<div layout="column" class="noprint" ng-hide="hide">
+		<p>Press H to show/hide options.</p>
+		<div layout layout-align="start center" layout-padding>
+			<p>Please select an Excel file from your computer:</p>
+			<input type="file" id="file-object">
+			<md-input-container ng-show="file">
+				<label>Worksheet</label>
+				<md-select ng-model="sheet">
+					<md-option ng-value="ws" ng-repeat="ws in worksheets track by ws.id" ng-bind="ws.name"></md-option>
+				</md-select>
+			</md-input-container>
+			<md-button ng-if="file" ng-click="Go()">Go</md-button>
+		</div>
+		<md-input-container class="md-block">
+			<label>Format</label>
+			<textarea ng-model="str" rows="10"></textarea>
+		</md-input-container>
+	</div>
+	<!-- Page -->
+	<div ng-repeat="page in doc" class="page" style="position:relative;">
+		<div ng-repeat="row in page" layout="row" layout-align="start start" style="position:relative;">
+			<div ng-repeat="card in row" style="height:{{args.card_height}}{{args.unit}}; width:{{args.card_width}}{{args.unit}}; border:1px solid black; margin:0 {{args.spacing}}{{args.unit}} {{args.spacing}}{{args.unit}} 0; position:relative;">
+				<div ng-repeat="el in elements">
+					<div ng-switch on="args.columns[el].type">
+						<div ng-switch-when="html" style="position:absolute; {{args.columns[el].style}}" ng-bind-html="card.data[el]"></div>
+						<div ng-switch-when="grid" style="position:absolute; {{args.columns[el].style}}">
+							<div ng-repeat="r in args.grid.split(';')" layout="row" layout-align="space-between center">
+								<div ng-repeat="c in r.split(',')">
+									<div ng-if="card.data[el].split(',').includes(c)" ng-bind="c"></div>
+									<div ng-if="!card.data[el].split(',').includes(c)">&nbsp;</div>
+								</div>
+							</div>
+						</div>
+						<div ng-switch-default style="position:absolute; {{args.columns[el].style}}" ng-bind="card.data[el]"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div style="border: 1px solid black; margin-top:0.25{{args.unit}}; width:100%; height:{{args.footer}}{{args.unit}};">&nbsp;</div>
+	</div>
+</body>
