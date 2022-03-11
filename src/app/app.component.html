@@ -1,0 +1,122 @@
+<div class="space" fxLayout>
+  <ngx-file-drop fxFlex dropZoneLabel="Drop files here" (onFileDrop)="dropped($event)" 
+  (onFileOver)="fileOver($event)" (onFileLeave)="fileLeave($event)" accept=".xlsx">
+    <ng-template ngx-file-drop-content-tmp let-openFileSelector="openFileSelector">
+      <div style="margin-right: 16px; font-size: large;">Drag & drop xlsx or</div>
+      <button mat-raised-button color="primary" type="button" (click)="openFileSelector()">Browse Files</button>
+    </ng-template>
+  </ngx-file-drop>
+  <div fxLayout="column" fxLayoutAlign="space-around center" fxFlex>
+    <div fxLayout="row wrap" fxLayoutAlign="center center">
+      <div *ngFor="let item of files; let i=index" style="font-weight: bold;">{{ item.relativePath }}</div>
+    </div>
+    <div *ngIf="workbook" fxLayout="row wrap" fxLayoutAlign="center center" fxLayoutGap="8px">
+      <strong>Detected Properties:</strong>
+      <div *ngFor="let property of getProperties();">
+        {{property}}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="workbook" fxLayout="row wrap" fxLayoutAlign="start center" fxLayoutGap="8px" class="space">
+  <mat-form-field appearance="fill">
+    <mat-label>Select Worksheet</mat-label>
+    <mat-select [(ngModel)]="sheetName">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let name of workbook.SheetNames;" [value]="name">{{name}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Data Start Row</mat-label>
+    <input matInput placeholder="2" [(ngModel)]="startRow" type="number">
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Output type</mat-label>
+    <mat-select [(ngModel)]="selectedOutput">
+      <mat-option *ngFor="let output of outputs;" [value]="output">{{output}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Cards per row</mat-label>
+    <input matInput placeholder="10" [(ngModel)]="cardsPerRow" type="number">
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Cards per column</mat-label>
+    <input matInput placeholder="7" [(ngModel)]="cardsPerCol" type="number">
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Card width (in)</mat-label>
+    <input matInput placeholder="2.5" [(ngModel)]="cardWidthIn" type="number">
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Card height (in)</mat-label>
+    <input matInput placeholder="3.5" [(ngModel)]="cardHeightIn" type="number">
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Card PPI</mat-label>
+    <input matInput placeholder="300" [(ngModel)]="cardPPI" type="number">
+  </mat-form-field>
+
+  <mat-form-field appearance="fill">
+    <mat-label>Title</mat-label>
+    <mat-select [(ngModel)]="title">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Subtitle</mat-label>
+    <mat-select [(ngModel)]="subtitle">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Img</mat-label>
+    <mat-select [(ngModel)]="img">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Slot L1</mat-label>
+    <mat-select [(ngModel)]="slotl1">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Slot L2</mat-label>
+    <mat-select [(ngModel)]="slotl2">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Slot R1</mat-label>
+    <mat-select [(ngModel)]="slotr1">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Slot R2</mat-label>
+    <mat-select [(ngModel)]="slotr2">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Flavor</mat-label>
+    <mat-select [(ngModel)]="flavor">
+      <mat-option>None</mat-option>
+      <mat-option *ngFor="let property of getProperties();" [value]="property">{{property}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-raised-button color="primary" type="button" (click)="go()">GO</button>
+</div>
+
+<canvas #canvas [width]="cardWidthIn * cardPPI * cardsPerRow" [height]="cardHeightIn * cardPPI * cardsPerCol"
+class="space" [ngClass]="{hidden:(!showResult)}" style="border: 1px solid black;"></canvas>
